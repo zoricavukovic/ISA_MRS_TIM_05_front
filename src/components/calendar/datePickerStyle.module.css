@@ -1,0 +1,10 @@
+.datePicker input {
+    width: 300px;
+    font-size: 18px;
+}
+
+.labelNames {
+    font-weight: bold;
+    font-size: 16px;
+    color: #062c9d;
+}
