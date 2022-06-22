@@ -150,6 +150,8 @@ export default function ReservationCardForClient(props) {
     }
     
     useEffect(() => {
+        console.log("CAAAAOOOOOO");
+        setCanCancel(false);
         console.log(props.reservation);
         let end = new Date(props.reservation.startDate);
         end.setDate(end.getDate() + props.reservation.numOfDays);
@@ -161,8 +163,12 @@ export default function ReservationCardForClient(props) {
         else if(new Date(props.reservation.startDate).getTime() > currDate.getTime()){
             setReservationStatus('Not started');
             const oneDay = 60 * 60 * 24 * 1000;
-            if(new Date(props.reservation.startDate).getTime() > new Date(currDate.getTime()+oneDay*3))
-                setCanCancel(true);
+            console.log(props.reservation);
+            
+            if(new Date(props.reservation.startDate).getTime() > new Date(currDate.getTime()+oneDay*3)){
+              console.log("Moze da otkaze!");
+              setCanCancel(true);
+            }
         }
         else
             setReservationStatus('Finished');
@@ -206,7 +212,7 @@ export default function ReservationCardForClient(props) {
         });
         });
         
-    }, [props.reservation])
+    }, [,props.reservation])
 
     if (isLoading) { return <div className="App"><CircularProgress /></div> }
   return (
@@ -402,7 +408,6 @@ export default function ReservationCardForClient(props) {
               
               {canCancel === true && <div style={{ display: "flex", flexWrap: 'wrap', flexDirection: "row" }}> 
                                 <Button size="small" onClick={()=>setOpenCancelDialog(true)}><CancelSharp fontSize="medium" style={{margin:"5px"}}/> Cancel</Button>
-                            
                             </div>}
               {hasComplaint === true ? (<div style={{ display: "flex", flexWrap: 'wrap', flexDirection: "row" }}> 
                 <Button size="small" onClick={showReport}><InfoIcon fontSize="medium" style={{margin:"5px"}}/> Complain</Button>

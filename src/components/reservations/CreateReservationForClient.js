@@ -36,6 +36,7 @@ export default function CreateReservationForClient(props) {
     const [message, setMessage] = React.useState("");
     const [typeAlert, setTypeAlert] = React.useState("");
     const [open, setOpen] = React.useState(false);
+    const [checkedTimeIndex, setCheckedTimeIndex] = useState(0);
 
     const [openDialogCreate, setOpenDialogCreate] = React.useState(props.openDialog);
 
@@ -116,7 +117,21 @@ export default function CreateReservationForClient(props) {
             else    
                 setMaxNumOfPersons(50);
             setBookingEntity(res.data);
-            setPricelistData(res.data.pricelists[0]);
+
+            let pricel = res.data.pricelists[0];
+            console.log("KAPETAN:"+res.data.shipOwner.captain);
+            if(res.data.entityType === "SHIP" && res.data.shipOwner.captain == true){
+                let captainService = {
+                    id:-1,
+                    serviceName:"Captain",
+                    price:100
+                }
+                pricel.additionalServices.push(captainService);
+            }
+            
+            setPricelistData(pricel);
+
+            
             let unaDates = []
             for(let unDate of res.data.allUnavailableDates)
                 unaDates.push(new Date(unDate[0],unDate[1]-1,unDate[2],unDate[3],unDate[4]));
@@ -139,38 +154,6 @@ export default function CreateReservationForClient(props) {
             setOptionsClientLoading(false);
         });
     }, []);
-
-    const findUnavailableDates = (bookEntity)=>{
-        var uDates = [];
-        bookEntity.unavailableDates.forEach(e => {
-            //----------DODATNO PROVERITI PO SATIM------------------------
-            var startDateTime = new Date(e.startTime[0],e.startTime[1]-1,e.startTime[2],e.startTime[3],e.startTime[4]);
-            console.log("UNA DATES");
-            console.log(startDateTime);
-            while(startDateTime.getTime() < new Date(e.endTime[0],e.endTime[1]-1,e.endTime[2],e.endTime[3],e.endTime[4]).getTime()){
-                uDates.push(startDateTime);
-                startDateTime = new Date(startDateTime.getTime()+ oneDay);
-            }
-        });
-        console.log(uDates);
-        for(var reservation of bookEntity.reservations)
-        {
-            console.log("===============NEW RESERVATION================");
-            console.log(reservation);
-            for(var i=0;i<reservation.numOfDays;i++){
-                uDates.push(new Date(new Date(reservation.startDate).getTime()+i*oneDay));
-                console.log("ADDED:");
-                console.log(new Date(new Date(reservation.startDate).getTime()+i*oneDay));
-            }
-            if(new Date(reservation.startDate).getHours() >= 21){
-                uDates.push(new Date(new Date(reservation.startDate).getTime()+reservation.numOfDays*oneDay));
-                console.log("ADDED Extra:");
-                console.log(new Date(new Date(reservation.startDate).getTime()+reservation.numOfDays*oneDay));
-            }
-            
-        }
-        setUnavailableDates(uDates);
-    };
 
     const isDateUnavailable = (date, unavDates)=>{
         date.setHours(12);
@@ -248,7 +231,15 @@ export default function CreateReservationForClient(props) {
                         time.available = true;
                         if(parseInt(time.value.split(':')[0]) <= unaDate.getHours())
                             time.available = false;
-                })
+                    })
+                if(isDateUnavailable(new Date(selectionRange.startDate.getTime() - oneDay), [unaDate]) &&  unaDate.getHours() < 21){
+                    availableTimes.forEach(time => {
+                        time.available = true;
+                        if(parseInt(time.value.split(':')[0]) <= unaDate.getHours())
+                            time.available = false;
+                    })
+                }
+
                 if(isDateUnavailable(selectionRange.endDate, [unaDate])){
                     console.log("Krajnji datum je nedostupan");
                     availableTimes.forEach(time => {
@@ -258,11 +249,14 @@ export default function CreateReservationForClient(props) {
                     })
                 }
             }
+        let index = 0;
         for(var time of availableTimes){
             if(time.available == true){
                 setCheckedTime(time);
+                setCheckedTimeIndex(index);
                 break;
             }
+            index++;
         }
         console.log(availableTimes);
         setTimes(availableTimes);
@@ -310,6 +304,12 @@ export default function CreateReservationForClient(props) {
         
         var difference = endDateTime.getTime() - startDateTime.getTime();
         var days = Math.ceil(difference/(1000*3600*24)); 
+
+        if(bookingEntity.entityType == "ADVENTURE"){
+            startDateTime = startDate;
+            console.log(startDate);
+            days = 0;
+        }
         startDateTime.setHours(parseInt(checkedTime.value.split(':')[0]))
         startDateTime.setMinutes(0);
         var addServ = [];
@@ -402,7 +402,7 @@ export default function CreateReservationForClient(props) {
         else{
             setPrice(price-service.price);
             setAdditionalPrice(additionalPrice-service.price);
-            setAdditionalServices(additionalServices.filter(item => item.serviceName === service.serviceName));
+            setAdditionalServices(additionalServices.filter(item => item.serviceName !== service.serviceName));
         }
     };
 
@@ -410,7 +410,7 @@ export default function CreateReservationForClient(props) {
         event.preventDefault();
         console.log(event.target.value);
         setCheckedTime(times.find(time => time.value === event.target.value));
-
+        setCheckedTimeIndex(times.findIndex(time => time.value === event.target.value));
     };
 
     const  handleSelect=(ranges)=>{
@@ -485,7 +485,8 @@ export default function CreateReservationForClient(props) {
                                 Name: <b>{bookingEntity.name} </b>             <br></br>
                                 Client: <b>{selectedClientId} </b>             <br></br>
                                 Place: <b>{bookingEntity.place.cityName+", "+bookingEntity.place.stateName}</b>    <br></br>
-                                Date range: <b>{`${format(selectionRange.startDate, "dd.MM.yyyy.")}`} to {`${format(selectionRange.endDate, "dd.MM.yyyy.")}`}</b><br></br>
+                                {bookingEntity.entityType != "ADVENTURE" &&<><p> Date range: </p><b>{`${format(selectionRange.startDate, "dd.MM.yyyy.")}`} to {`${format(selectionRange.endDate, "dd.MM.yyyy.")}`}</b><br></br></>}
+                                {bookingEntity.entityType == "ADVENTURE" &&<> Date: <b>{`${format(startDate, "dd.MM.yyyy.")}`}</b><br></br></>}
                                 Number of persons: <b>{personNumber}</b><br></br>
                                 Additional services selected:<b>{additionalServices.length!=0? additionalServices.map(service=>{
                                     return service.serviceName + " "+service.price+"€, ";
@@ -572,7 +573,6 @@ export default function CreateReservationForClient(props) {
                                     isLoaded &&
                                     <RadioGroup
                                     style={{margin:"10px 10px"}}
-                                    defaultValue={checkedTime.value}
                                     row
                                     onChange={radioButtonChanged}
                                     aria-labelledby="demo-row-radio-buttons-group-label"
@@ -581,7 +581,7 @@ export default function CreateReservationForClient(props) {
                                 >
                                     {
                                         isLoaded? times.map((time,index)=>{
-                                            return <FormControlLabel value={time.value} control={<Radio />} label={time.text} disabled={!time.available}/>
+                                            return <FormControlLabel value={time.value} control={<Radio checked={index == checkedTimeIndex}/>} label={time.text} disabled={!time.available}/>
                                         })
                                         :<></>
                                     }

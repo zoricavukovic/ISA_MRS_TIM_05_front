@@ -58,6 +58,7 @@ import StyledAvatar from '../../StyledAvatar';
 import { subscribeClientWithEntity, unsubscribeClientWithEntity } from '../../../service/UserService';
 import Approved from "../../../icons/approval.png";
 import NotApproved from "../../../icons/notApprowed.png";
+import Money from "../../../icons/money.png";
 
 const ExpandMore = styled((props) => {
     const { expand, ...other } = props;
@@ -86,6 +87,7 @@ export default function ImageCard(props) {
     const [clientReviews, setClientReviews] = useState([]);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [typeAlert, setTypeAlert] = useState("success");
+    const [userExists, setUserExists] = useState(false);
     const history = useHistory();
 
     const handleClick = () => {
@@ -321,10 +323,14 @@ export default function ImageCard(props) {
         console.log(props.subscribed);
         console.log(props.rating);
 
+        if(getCurrentUser() != undefined && getCurrentUser() != null)
+            setUserExists(true);
+
         getCottageById(props.cottageId).then(res => {
             setCottageBasicData(res.data);
-            if(getCurrentUser().id == res.data.cottageOwnerDTO.id)
-                setHasAuthority(true);
+            if(getCurrentUser() != undefined && getCurrentUser() != null)
+                if(getCurrentUser().id == res.data.cottageOwnerDTO.id)
+                    setHasAuthority(true);
             setLoadingCottage(false);
         }).catch(res => {
             handleClick();
@@ -339,11 +345,12 @@ export default function ImageCard(props) {
             setLoadingPricelist(false);
         });
 
-        getAvailableFastReservationsByBookingEntityId(props.cottageId).then(res=>{
-            console.log(res.data);
-            setFastReservations(res.data);
+        if(getCurrentUser() != undefined && getCurrentUser() != null)
+            getAvailableFastReservationsByBookingEntityId(props.cottageId).then(res=>{
+                console.log(res.data);
+                setFastReservations(res.data);
 
-        });
+            });
 
         getRatingsByEntityId(props.cottageId).then(res=>{
             console.log(res.data);
@@ -368,7 +375,7 @@ export default function ImageCard(props) {
                 
                 action={
                     <>
-                    {getCurrentUser().userType.name == "ROLE_CLIENT"?(
+                    {(userExists && getCurrentUser().userType.name == "ROLE_CLIENT")?(
                     <>
                     <Button onClick={reserveBookingEntity} disabled={getCurrentUser().penalties>2?true:false} variant='contained' size='large' /*style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)'}}*/>
                         Reserve
@@ -444,7 +451,7 @@ export default function ImageCard(props) {
                                         <Typography variant="subtitle1" component="div">
                                             {res.cost*res.numOfDays*res.numOfPersons}€
                                         </Typography>
-                                            {getCurrentUser().userType.name == "ROLE_CLIENT"?(
+                                            {(userExists && getCurrentUser().userType.name == "ROLE_CLIENT")?(
                                             <Button onClick={() =>FastReserve(res)} disabled={getCurrentUser().penalties>2?true:false} variant='contained' style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)'}}>
                                                 Reserve Now
                                             </Button>):(<div>
@@ -486,9 +493,7 @@ export default function ImageCard(props) {
             
 
             <div style={{ display: "flex", flexDirection: "row", flexWrap: 'wrap' }}>
-                <Typography variant="body2" color="text.secondary" style={{ width: '30%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
-                    <h4>Promo Description: </h4><h3>{cottageBasicData.promoDescription} </h3>
-                </Typography>
+               
                 <Grid item xs={12} sm={4} style={{ width: '30%'}} minWidth="200px">
                         <CottageAdditionalInfo
                             header="Rules of conduct"
@@ -510,7 +515,18 @@ export default function ImageCard(props) {
                     <CardContent>
 
                     </CardContent>
-                
+                <Typography variant="body2" color="text.secondary" style={{ width: '30%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
+                <h4>Promo Description: </h4><h3>{cottageBasicData.promoDescription} </h3>
+                </Typography>
+                <Typography variant="body2" color="text.primary" style={{ width: '20%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
+                        <img src={Money} height='40px' width={"40px"}></img>
+                        <div style={{marginTop:'10px', display:'flex'}}>
+                            <h3 >Cancelation rate: </h3>{cottageBasicData.entityCancelationRate > 0?<h3>{cottageBasicData.entityCancelationRate+"%"} </h3>:<h3>Free</h3>}
+                        </div>
+                        <div style={{marginTop:'10px', display:'flex'}}>
+                            <h3 >Price: {pricelistData.entityPricePerPerson+"€"} </h3>
+                        </div>
+                    </Typography>
             </div >
             <hr></hr>
                 <Grid container spacing={2} style={{ marginTop:'10px', marginBottom:'20px', marginLeft:'40px'}}>

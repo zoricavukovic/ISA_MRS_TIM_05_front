@@ -60,11 +60,14 @@ export default function Reports() {
     const [name, setName] = React.useState();
 
     useEffect(() => {
-
       getAllBookingEntitiesByOwnerId(getCurrentUser().id)
         .then(res => {
-            if (res.data.length === 0)
-                return;
+            console.log(optionsBox);
+            if (res.data.length === 0){
+              setLoading(false);
+              setChartsResLoading(false);
+              return;
+            }
             
             let optBox = [];
             let idSelectedEntity = -1;
@@ -173,6 +176,7 @@ export default function Reports() {
     if (loading || chartsResLoading) return <><CircularProgress /></> 
     return (
         <div>
+            {optionsBox.length === 0?<h1 style={{margin:'10px 30%'}}>No booking entities for analytics</h1>:
             <Container >
                 <Box style={{marginTop:'2%', padding:'1%', borderRadius: '10px', display: "flex", flexWrap: 'wrap', flexDirection: "row"}} sx={{ bgcolor: 'aliceblue', width:'100%' }}>
                     <div style={{ color: 'rgb(5, 30, 52)', fontWeight: 'bold', textAlign: 'center', backgroundColor: 'rgb(244, 177, 77)', margin: '1%', marginLeft: '13.5%', padding: '1%', borderRadius: '10px', width: '15%', display: "flex", flexWrap: 'wrap', flexDirection: "row"}} >
@@ -325,7 +329,7 @@ export default function Reports() {
                 </Box>
                 
             </Container>
-            
+            }
         </div>
 
     );

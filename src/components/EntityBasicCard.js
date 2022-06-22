@@ -119,7 +119,7 @@ export default function EntityBasicCard(props) {
 
     const showBookingEntity = (event) => {
         event.stopPropagation();
-        if (getCurrentUser() == undefined || getCurrentUser() == null) return;
+        //if (getCurrentUser() == undefined || getCurrentUser() == null) return;
         if (props.bookingEntity.entityType === "COTTAGE") {
             history.push({
                 pathname: "/showCottageProfile",
@@ -184,7 +184,7 @@ export default function EntityBasicCard(props) {
 
     if (isLoading) { return <div></div> } 
     return (
-        <Card style={{ margin: "2%" }} sx={{ maxWidth: 345 }} onClick={showBookingEntity}>
+        <Card style={{ margin: "2%" }} sx={{ maxWidth: 345 }}>
             <Dialog open={openDialog} onClose={handleCloseDialog}>
                 <DialogTitle>Confirm Deleting</DialogTitle>
                 <DialogContent>
@@ -213,6 +213,7 @@ export default function EntityBasicCard(props) {
 
             {props.bookingEntity.pictures.length === 0 ? (
                 <CardMedia
+                    onClick={showBookingEntity}
                     component="img"
                     height="140"
                     alt="No Images"
@@ -228,6 +229,7 @@ export default function EntityBasicCard(props) {
                             ) :
                             (
                                 <CardMedia
+                                    onClick={showBookingEntity}
                                     component="img"
                                     style={{ height: "26vh" }}
                                     alt="No Images"
@@ -238,7 +240,7 @@ export default function EntityBasicCard(props) {
                     }
                 </div>
             )}
-            <CardContent>
+            <CardContent  onClick={showBookingEntity}>
                 <Typography style={{ textAlign: "left" }} gutterBottom variant="h5" component="div">
                     <div style={{display:'flex'}}>
                         <h3>{props.bookingEntity.name}
@@ -259,7 +261,7 @@ export default function EntityBasicCard(props) {
                 <Typography style={{ textAlign: "left" }} gutterBottom variant="h7" component="div">
                     {props.bookingEntity.entityType === "COTTAGE" ? (
                         <div>
-                            <text style={{ fontWeight:'bold'  }}>Cost Per Night:</text><Euro></Euro> {props.bookingEntity.entityPricePerPerson} €
+                            <text style={{ fontWeight:'bold'  }}>Cost Per Night:</text> <b>{props.bookingEntity.entityPricePerPerson} €</b>
                         </div>
 
                     ) : (<div>
@@ -285,26 +287,14 @@ export default function EntityBasicCard(props) {
                             ) :
                             (
                                 <span>
-                                    {((props.onlyTypeForDeleteVisible === "ADVENTURES" && (getCurrentUser().userType.name === "ROLE_COTTAGE_OWNER" || getCurrentUser().userType.name === "ROLE_SHIP_OWNER")) ||
-                                        (props.onlyTypeForDeleteVisible === "COTTAGES" && (getCurrentUser().userType.name === "ROLE_INSTRUCTOR" || getCurrentUser().userType.name === "ROLE_SHIP_OWNER")) ||
-                                        (props.onlyTypeForDeleteVisible === "SHIPS" && (getCurrentUser().userType.name === "ROLE_INSTRUCTOR" || getCurrentUser().userType.name === "ROLE_COTTAGE_OWNER")))  
-                                        ?
-                                    (
-                                    <span>
-                                    </span>
-                                    )
-                                    :
-                                    ( <span>
-                                        {getCurrentUser().id === ownerId ? (
-                                        <Button size="small" onClick={handleClickOpen}><DeleteIcon />Delete</Button>
-                                        ):(<></>)}
-                                        <Snackbar open={open} autoHideDuration={6000} onClose={handleClose}>
-                                            <Alert onClose={handleClose} severity={typeAlert} sx={{ width: '100%' }}>
-                                                {message}
-                                            </Alert>
-                                        </Snackbar>
-                                    </span>)
-                                    }
+                                    {getCurrentUser().userType.name === "ROLE_ADMIN" || getCurrentUser().userType.name === "ROLE_SUPER_ADMIN" ||  getCurrentUser().id === ownerId ? (
+                                    <Button size="small" onClick={handleClickOpen}><DeleteIcon />Delete</Button>
+                                    ):(<></>)}
+                                    <Snackbar open={open} autoHideDuration={6000} onClose={handleClose}>
+                                        <Alert onClose={handleClose} severity={typeAlert} sx={{ width: '100%' }}>
+                                            {message}
+                                        </Alert>
+                                    </Snackbar>
                                 </span>
                             )
                         }

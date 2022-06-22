@@ -163,6 +163,8 @@ function RegistrationForm(props) {
                 setMessage("Successfuly created user! Wait for administrator to allow account.");
             }
             handleClick();
+            history.push("/login");
+
         }).catch(res=>{
             console.log(res);
             setType("error");
@@ -355,10 +357,10 @@ function RegistrationForm(props) {
                                         <p style={{ color: '#ED6663', fontSize: "11px", display: hiddenErrorPhone }}>Please check valid phone number. (length 7-10)</p>
                                     </tr>
                                     <tr>
-                                        <TextField style={{/*margin:'10px 10px'*/ }} onClick={()=>setOpenDate(!openDate)} label='Date of birth' placeholder={`${format(dateOfBirth, "dd.MM.yyyy.")}`} 
+                                        <TextField onClick={()=>setOpenDate(!openDate)} label='Date of birth' placeholder={`${format(dateOfBirth, "dd.MM.yyyy.")}`} 
                                             value={`${format(dateOfBirth, "dd.MM.yyyy.")}`}
                                             style={{margin:"2%"}}
-                                            placeholder="Date Of Birth"
+                                            //placeholder="Date Of Birth"
                                             InputProps={{
                                                 startAdornment: (
                                                     <InputAdornment position="start">

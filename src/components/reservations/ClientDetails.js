@@ -44,7 +44,12 @@ export default function ClientDetails(props) {
       if (props === null || props === undefined){
         history.push('/login');
       }
-      
+      console.log(props.reservation);
+      if(props.reservation.client == null)
+        {
+          setLoading(false);
+          return;
+        }
         getUserById(props.reservation.client.id).then(res => {
             setUserData(res.data);
             console.log(res.data);
@@ -54,6 +59,7 @@ export default function ClientDetails(props) {
         })
     }, [])
     if (isLoading) { return <div className="App"><CircularProgress /></div> }
+    if(Object.keys(userData)==0){return <h1>Not yet reserved</h1>}
   return (
     <Grid button onClick={showUserProfile} textAlign="left" sx={{ width: "100%"}} style={{marginTop:"3%"}}>
     <Grid item xs={12} md={6}>

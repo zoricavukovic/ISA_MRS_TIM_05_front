@@ -29,7 +29,7 @@ import Dialog from '@mui/material/Dialog';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import LoyaltyProgramToolTip from "../loyaltyProgram/LoyaltyProgramsToolTip";
 import { propsLocationStateFound } from "../forbiddenNotFound/notFoundChecker";
-import { hasUserRequest, sendDeleteRequest } from "../../service/DeleteAccountRequestService";
+import { canDeleteProfile, hasUserRequest, sendDeleteRequest } from "../../service/DeleteAccountRequestService";
 
 
 export default function UserProfile(props) {
@@ -87,6 +87,10 @@ export default function UserProfile(props) {
             });
             hasUserRequest(getCurrentUser().id).then(res=>{
                 setDeleteDisabled(res.data);
+            });
+            canDeleteProfile(getCurrentUser().id).then(res=>{
+                setDeleteDisabled(!res.data);
+
             })
         }
     }, []);
@@ -104,7 +108,7 @@ export default function UserProfile(props) {
             setOpenSnackbar(true);
             setSnackBarType("success");
             handleClose();
-        }).chach(res=>{
+        }).catch(res=>{
             setSnackbarMessage(res.data);
             setOpenSnackbar(true);
             setSnackBarType("error");
@@ -293,13 +297,14 @@ export default function UserProfile(props) {
                         ) : (<div></div>)}
                     </Grid>
                 </div>
-                <div style={{ margin: '0px auto', width: '30%' }}>
-                    <UserInfoGrid userData={userData} />
-                    <div style={{width:'100%', margin:'10px 0px'}}>
-                        <Button disabled={DeleteDisabled} style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)', position:'relative', width:'200px', margin:'0px -100px', left:'50%', foreground:''}} variant="contained" startIcon={<Delete></Delete>} onClick={()=>setOpenDeleteRequest(true)}>Delete Account</Button>
+                    <div style={{ margin: '0px auto', width: '30%' }}>
+                        <UserInfoGrid userData={userData} />
+                    {getCurrentUser().id === userData.id && 
+                        <div style={{width:'100%', margin:'10px 0px'}}>
+                            <Button disabled={DeleteDisabled} style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)', position:'relative', width:'200px', margin:'0px -100px', left:'50%', foreground:''}} variant="contained" startIcon={<Delete></Delete>} onClick={()=>setOpenDeleteRequest(true)}>Delete Account</Button>
+                        </div>
+                    }
                     </div>
-                </div>
-
             </div>
 
         );

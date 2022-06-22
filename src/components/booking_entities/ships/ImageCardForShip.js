@@ -46,6 +46,7 @@ import CreateReservationForClient from '../../reservations/CreateReservationForC
 import { findAllClientsWithActiveReservations} from '../../../service/ReservationService';
 import Approved from "../../../icons/approval.png";
 import NotApproved from "../../../icons/notApprowed.png"
+import Money from "../../../icons/money.png";
 
 const ExpandMore = styled((props) => {
     const { expand, ...other } = props;
@@ -74,6 +75,7 @@ export default function ImageCardForShip(props) {
     const [clientReviews, setClientReviews] = useState([]);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [typeAlert, setTypeAlert] = useState("success");
+    const [userExists, setUserExists] = useState(false);
     const history = useHistory();
 
     const handleClick = () => {
@@ -314,11 +316,15 @@ export default function ImageCardForShip(props) {
     useEffect(() => {
         setIsSubscribed(props.subscribed);
 
+        if(getCurrentUser() != undefined && getCurrentUser() != null)
+            setUserExists(true);
+
         getShipById(props.shipId).then(res => {
             setShipBasicData(res.data);
             console.log(res.data);
-            if(getCurrentUser().id == res.data.shipOwner.id)
-                setHasAuthority(true);
+            if(getCurrentUser() != undefined && getCurrentUser() != null)
+                if(getCurrentUser().id == res.data.shipOwner.id)
+                    setHasAuthority(true);
             setLoadingShip(false);
         }).catch(res => {
             props.setMessage(res.response.data);
@@ -333,11 +339,12 @@ export default function ImageCardForShip(props) {
             setLoadingPricelist(false);
         });
 
-        getAvailableFastReservationsByBookingEntityId(props.shipId).then(res=>{
-            console.log(res.data);
-            setFastReservations(res.data);
+        if(getCurrentUser() != undefined && getCurrentUser() != null)
+            getAvailableFastReservationsByBookingEntityId(props.shipId).then(res=>{
+                console.log(res.data);
+                setFastReservations(res.data);
 
-        });
+            });
 
         getRatingsByEntityId(props.shipId).then(res=>{
             console.log("ratingd");
@@ -366,7 +373,7 @@ export default function ImageCardForShip(props) {
 
                 action={
                     <>
-                    {getCurrentUser().userType.name == "ROLE_CLIENT"?(
+                    {(userExists && getCurrentUser().userType.name == "ROLE_CLIENT")?(
                     <>
                     <Button onClick={reserveBookingEntity} disabled={getCurrentUser().penalties>2?true:false} variant='contained' size='large' /*style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)'}}*/>
                         Reserve
@@ -444,7 +451,7 @@ export default function ImageCardForShip(props) {
                                         <Typography variant="subtitle1" component="div">
                                             {res.cost*res.numOfDays*res.numOfPersons}€
                                         </Typography>
-                                            {getCurrentUser().userType.name == "ROLE_CLIENT"?(
+                                            {(userExists && getCurrentUser().userType.name == "ROLE_CLIENT")?(
                                                 <Button onClick={() =>FastReserve(res)} disabled={getCurrentUser().penalties>2?true:false} variant='contained' style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)'}}>
                                                     Reserve Now
                                                 </Button>
@@ -512,9 +519,18 @@ export default function ImageCardForShip(props) {
                         />
                     </Grid>
                     <Typography variant="body2" style={{ width: '25%', minWidth: "200px", borderRadius: '10px', paddingLeft: '1%', paddingBottom: '0.2%', paddingTop: '0.2%', margin: '2%' }}>
-                    <Typography variant="body2" color="text.secondary" style={{ width: '100%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
-                        <h4>Promo Description: </h4><h3>{shipBasicData.promoDescription} </h3>
-                    </Typography>
+                        <Typography variant="body2" color="text.secondary" style={{ width: '100%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
+                            <h4>Promo Description: </h4><h3>{shipBasicData.promoDescription} </h3>
+                        </Typography>
+                        <Typography variant="body2" color="text.primary" style={{ width: '100%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
+                            <img src={Money} height='40px' width={"40px"}></img>
+                            <div style={{marginTop:'10px', display:'flex'}}>
+                                <h3 >Cancelation rate: </h3>{shipBasicData.entityCancelationRate > 0?<h3>{shipBasicData.entityCancelationRate+"%"} </h3>:<h3>Free</h3>}
+                            </div>
+                            <div style={{marginTop:'10px', display:'flex'}}>
+                                <h3 >Price: {pricelistData.entityPricePerPerson+"€"} </h3>
+                            </div>
+                        </Typography>
                     </Typography>
             </div >
             <hr></hr>

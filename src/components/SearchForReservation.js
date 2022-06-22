@@ -206,6 +206,7 @@ export default function SearchForReservation({setSearchParams,setFilterParams, t
                                     editableDateInputs={true}
                                     date={startDate}
                                     onChange={handleDatePick}
+                                    minDate={new Date()}
                                   />
                                 </div>
                               }

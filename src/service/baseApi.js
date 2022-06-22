@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken, tokenIsPresent,getCurrentUser } from './AuthService';
 
 const api = axios.create({
-    baseURL: 'https://isa-mrs-tim-05-back.herokuapp.com/bookingApp/',
+    baseURL: 'http://localhost:8092/bookingApp/',
     headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'

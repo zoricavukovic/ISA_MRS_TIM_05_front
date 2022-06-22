@@ -39,6 +39,8 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import Approved from "../../../icons/approval.png";
 import NotApproved from "../../../icons/notApprowed.png"
 import CreateReservationForClient from '../../reservations/CreateReservationForClient';
+import Money from "../../../icons/money.png";
+import Persons from "../../../icons/persons.png";
 
 const ExpandMore = styled((props) => {
     const { expand, ...other } = props;
@@ -137,6 +139,7 @@ function AdventureActions(props) {
                 });
             })
             .catch(res => {
+                props.setTypeAlert("error");
                 props.setMessage(res.response.data);
                 props.handleClick();
                 return;
@@ -151,6 +154,7 @@ function AdventureActions(props) {
                 state: { bookingEntityId: props.adventureId }
             })
         }).catch(res => {
+            props.setTypeAlert("error");
             props.setMessage(res.response.data);
             props.handleClick();
             return;
@@ -165,6 +169,7 @@ function AdventureActions(props) {
                 state: { bookingEntityId: props.adventureId } 
             })
         }).catch(res => {
+            props.setTypeAlert("error");
             props.setMessage(res.response.data);
             props.handleClick();
             return;
@@ -178,6 +183,7 @@ function AdventureActions(props) {
                 setOpenDialogCreate(true);
             }
             else{
+                props.setTypeAlert("error");
                 props.setMessage("Don't have clients with active reservations.");
                 props.handleClick();
             }
@@ -232,6 +238,7 @@ export default function AdventureProfile(props) {
     const [openDialog, setOpenDialog] = useState(false);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [selectedFastReservation, setSelectedFastReservation] = useState({});
+    const [userExists, setUserExists] = useState(false);
     const [typeAlert, setTypeAlert] = useState("success");
     let adventureId;
 
@@ -360,12 +367,17 @@ export default function AdventureProfile(props) {
     useEffect(() => {
         setIsSubscribed(props.location.state.subscribed);
 
+        if(getCurrentUser() != undefined && getCurrentUser() != null)
+        setUserExists(true);
+
         if (propsLocationStateFound(props, history)) {
             console.log(props.location.state.rating);
             getAdventureById(props.location.state.bookingEntityId).then(res => {
                 setAdventureData(res.data);
-                if(res.data.instructor.id == getCurrentUser().id)
-                    setHasAuthority(true);
+                console.log(res.data);
+                if(getCurrentUser() != undefined && getCurrentUser() != null)
+                    if(getCurrentUser().id == res.data.instructor.id)
+                        setHasAuthority(true);
                 setLoading(false);
             }).catch(res => {
                 handleClick();
@@ -373,16 +385,17 @@ export default function AdventureProfile(props) {
                 setMessage(res.response.data);
                 console.log(res.response.data);
                 history.push('/adventures');
-
             })
             getPricelistByEntityId(props.location.state.bookingEntityId).then(result => {
                 setPricelistData(result.data);
                 setLoadingPricelist(false);
             })
-            getAvailableFastReservationsByBookingEntityId(props.location.state.bookingEntityId).then(res=>{
-                console.log(res.data);
-                setFastReservations(res.data);
-            });
+            
+            if(getCurrentUser() != undefined && getCurrentUser() != null)
+                getAvailableFastReservationsByBookingEntityId(props.location.state.bookingEntityId).then(res=>{
+                    console.log(res.data);
+                    setFastReservations(res.data);
+                });
     
             getRatingsByEntityId(props.location.state.bookingEntityId).then(res=>{
                 console.log(res.data);
@@ -411,7 +424,7 @@ export default function AdventureProfile(props) {
 
                     action={
                         <>
-                        {getCurrentUser().userType.name == "ROLE_CLIENT"?(
+                        {(userExists && getCurrentUser().userType.name == "ROLE_CLIENT")?(
                         <>
                         <Button onClick={reserveBookingEntity} disabled={getCurrentUser().penalties>2?true:false} variant='contained' size='large' /*style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)'}}*/>
                             Reserve
@@ -431,6 +444,7 @@ export default function AdventureProfile(props) {
                         expanded={expanded}
                         adventureId={adventureId}
                         setMessage={setMessage}
+                        setTypeAlert ={setTypeAlert}
                         handleClick={handleClick}
                         handleExpandClick={() => handleExpandClick()}
                     />
@@ -459,11 +473,6 @@ export default function AdventureProfile(props) {
                                         <Grid item>
                                             <Grid container>
                                                 <Grid item xs={6}> 
-                                                    <Typography gutterBottom variant="subtitle1" component="div">
-                                                        {res.numOfDays} Days
-                                                    </Typography>
-                                                </Grid>
-                                                <Grid item xs={6}> 
                                                     <Grid container>
                                                         <Grid item>
                                                             <PersonIcon size='medium'/> 
@@ -475,13 +484,16 @@ export default function AdventureProfile(props) {
                                                         </Grid>
                                                     </Grid>
                                                 </Grid> 
+                                                <Grid item xs={6}> 
+                                                    <Typography variant="subtitle1" component="div">
+                                                        {res.cost*res.numOfPersons}€
+                                                    </Typography>
+                                                </Grid> 
                                             </Grid>
                                         </Grid>
                                         <Grid item>
-                                        <Typography variant="subtitle1" component="div">
-                                            {res.cost*res.numOfDays*res.numOfPersons}€
-                                        </Typography>
-                                            {getCurrentUser().userType.name == "ROLE_CLIENT"?(
+                                        
+                                            {(userExists && getCurrentUser().userType.name == "ROLE_CLIENT")?(
                                                 <Button onClick={() =>FastReserve(res)} disabled={getCurrentUser().penalties>2?true:false} variant='contained' style={{backgroundColor:'rgb(244, 177, 77)', color:'rgb(5, 30, 52)'}}>
                                                     Reserve Now
                                                 </Button>
@@ -522,27 +534,46 @@ export default function AdventureProfile(props) {
                 <div>
                     <div style={{ display: "flex", flexDirection: "row", flexWrap: 'wrap' }}>
 
+                            
+                            <Grid item xs={12} sm={4} style={{ width: '30%'}} minWidth="200px">
+                                <AdventureAdditionalInfo
+                                    header="Rules of conduct"
+                                    additionalData={<RenderRulesOfConduct rulesOfConduct={adventureData.rulesOfConduct} />}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={4} minWidth="300px">
+                                <AdventureAdditionalInfo
+                                    header="Additional services"
+                                    additionalData={<RenderAdditionalServices additionalServices={pricelistData.additionalServices} />}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={4} style={{ width: '30%'}} minWidth="200px">
+                                <AdventureAdditionalInfo
+                                    header="Fishing equipment"
+                                    additionalData={<RenderFishingEquipment fishingEquipment={adventureData.fishingEquipment} />}
+                                />
+                            </Grid>
+                            
+                            <Typography variant="body2" color="text.secondary" style={{ width: '30%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
+                                <img height='40px' width={"40px"} src={Persons}></img>
+                                <div style={{display:'flex'}}>
+                                    <h3>Max number of persons: </h3><h3>{adventureData.maxNumOfPersons} </h3>
+                                </div>
+                            </Typography>
+
                             <Typography variant="body2" color="text.secondary" style={{ width: '30%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
                                 <h4>Promo Description: </h4><h3>{adventureData.promoDescription} </h3>
                             </Typography>
-                                <Grid item xs={12} sm={4} style={{ width: '30%'}} minWidth="200px">
-                                    <AdventureAdditionalInfo
-                                        header="Rules of conduct"
-                                        additionalData={<RenderRulesOfConduct rulesOfConduct={adventureData.rulesOfConduct} />}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4} minWidth="300px">
-                                    <AdventureAdditionalInfo
-                                        header="Additional services"
-                                        additionalData={<RenderAdditionalServices additionalServices={pricelistData.additionalServices} />}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4} style={{ width: '30%'}} minWidth="200px">
-                                    <AdventureAdditionalInfo
-                                        header="Fishing equipment"
-                                        additionalData={<RenderFishingEquipment fishingEquipment={adventureData.fishingEquipment} />}
-                                    />
-                                </Grid>
+
+                            <Typography variant="body2" color="text.primary" style={{ width: '20%', backgroundColor: 'aliceblue', borderRadius: '10px', paddingLeft: '1%', paddingTop: '0.2%', paddingBottom: '0.1%', margin: '2%' }}>
+                                <img src={Money} height='40px' width={"40px"}></img>
+                                <div style={{marginTop:'10px', display:'flex'}}>
+                                    <h3 >Cancelation rate: </h3>{adventureData.entityCancelationRate > 0?<h3>{adventureData.entityCancelationRate+"%"} </h3>:<h3>Free</h3>}
+                                </div>
+                                <div style={{marginTop:'10px', display:'flex'}}>
+                                    <h3 >Price: {pricelistData.entityPricePerPerson+"€"} </h3>
+                                </div>
+                            </Typography>
                             <Typography variant="body2" color="text.secondary" style={{ width: '30%', backgroundColor: 'rgb(252, 234, 207)', borderRadius: '10px', paddingLeft: '1%', paddingBottom: '0.2%', paddingTop: '0.2%', margin: '2%' }}>
                                 <h4>Short Bio: </h4><h3>{adventureData.shortBio} </h3>
                             </Typography>

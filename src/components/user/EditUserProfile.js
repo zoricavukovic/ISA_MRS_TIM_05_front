@@ -124,6 +124,7 @@ function EditUserProfile(props) {
         let changedData = changedUserData;
         changedData.dateOfBirth = dateOfBirth;
         changedData.place.id = selectedPlaceId;
+        changedData.captain = checked;
         setChangedUserData(changedData);
         console.log("CHanged user data:",changedData);
         editUserById(getCurrentUser().id, changedData).then(res=>{

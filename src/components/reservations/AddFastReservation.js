@@ -13,13 +13,11 @@ import { useForm } from "react-hook-form";
 import { useHistory } from "react-router-dom";
 import { FormControlLabel,FormControl, FormLabel } from '@mui/material'
 import AddingAdditionalServiceWithoutAmount from "../AddingAdditionServicesWithoutAmount";
-import {getBookingEntityByIdForCardView} from '../../service/BookingEntityService.js';
+import {getBookingEntityById, getBookingEntityByIdForCardView} from '../../service/BookingEntityService.js';
 import { getCurrentUser } from '../../service/AuthService.js';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { format } from "date-fns";
 import Chip from '@mui/material/Chip';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import IconButton from '@mui/material/IconButton';
@@ -33,6 +31,8 @@ import ShipOwner from "../../icons/shipOwner.png";
 import CottageOwner from "../../icons/cottageOwner.png";
 import Instructor from "../../icons/instructor.png";
 import Tooltip from '@mui/material/Tooltip';
+import { DateRangeOutlined } from '@mui/icons-material';
+import { Calendar } from 'react-date-range';
 
 const Input = styled(MuiInput)`
   width: 42px;
@@ -45,7 +45,10 @@ export default function AddFastReservation(props) {
   const [entityBasicData, setEntityBasicData] = useState({});
   const [pricelistData, setPricelistData] = useState({});
   const [message, setMessage] = React.useState("");
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  const [openDate,setOpenDate] = useState(false);
   const history = useHistory();
+  const oneDay = 60 * 60 * 24 * 1000;
 
   const [fastResData, setFastResData] = React.useState(
     {
@@ -184,11 +187,16 @@ export default function AddFastReservation(props) {
       if (getCurrentUser() == null || getCurrentUser() == undefined || (getCurrentUser().userType.name!=="ROLE_COTTAGE_OWNER" && getCurrentUser().userType.name!=="ROLE_SHIP_OWNER" && getCurrentUser().userType.name!== "ROLE_INSTRUCTOR")) {
         history.push('/forbiddenPage');
       }
-      let newDate = new Date(value);
+      let newDate = fastResData.startDate;
       
-      let date = [newDate.getFullYear(), newDate.getMonth()+1, newDate.getUTCDate(), parseInt(checkedTime.value.split(':')[0]), 0];
+      console.log(newDate.getDate());
+      let date = [newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate(), parseInt(checkedTime.value.split(':')[0]), 0];
     
-      console.log(newDate);
+      console.log(date);
+
+      if(entityBasicData.entityType == "ADVENTURE")
+        data.numNights = 0;
+
       let newFastReservation={
         canceled:false,
         fastReservation: true,
@@ -209,6 +217,8 @@ export default function AddFastReservation(props) {
           handleClick();
       });
   }
+
+  
   useEffect(() => {
     if (getCurrentUser() === null || getCurrentUser() === undefined){
       history.push('/forbiddenPage');
@@ -216,15 +226,25 @@ export default function AddFastReservation(props) {
     if (props.history.location.state === null || props.history.location.state === undefined){
         return;
     }
-    getBookingEntityByIdForCardView(props.history.location.state.bookingEntityId).then(res => {
+    getBookingEntityById(props.history.location.state.bookingEntityId).then(res => {
       console.log(res.data);
       setEntityBasicData(res.data);
       for(var time of availableTimes){
         if(time.available == true){
             setCheckedTime(time);
             break;
-        }
-    }
+        }  
+      }
+      console.log("Prosao 1");
+      let unaDates = []
+      for(let unDate of res.data.allUnavailableDates)
+          unaDates.push(new Date(unDate[0],unDate[1]-1,unDate[2],unDate[3],unDate[4]));
+      
+      console.log("Prosao 2");
+      findNextAvailableDate(unaDates);
+      setUnavailableDates(unaDates);
+      console.log(unaDates);
+
       setLoading(false);
     }).catch(error => {
         setMessage(error.response.data);
@@ -234,9 +254,21 @@ export default function AddFastReservation(props) {
 
     getPricelistByEntityId(props.history.location.state.bookingEntityId).then(res => {
       console.log(res.data);
-      setPricelistData(res.data);
-      setAdditionalServices(res.data.additionalServices);
-      setStartAdditionalServices(res.data.additionalServices);
+      let pricel = res.data;
+      console.log(getCurrentUser().userType);
+      if(getCurrentUser().userType.name == "ROLE_SHIP_OWNER"){
+          let captainService = {
+              id:-1,
+              serviceName:"Captain",
+              price:100
+          }
+          pricel.additionalServices.push(captainService);
+      }
+      
+      setPricelistData(pricel);
+
+      setAdditionalServices(pricel.additionalServices);
+      setStartAdditionalServices(pricel.additionalServices);
       setLoadingPricelist(false);
     }).catch(error => {
         setMessage(error.response.data);
@@ -244,6 +276,70 @@ export default function AddFastReservation(props) {
     });
 
   }, []);
+
+  const isDateTimeUnavailable = (date, unavDates)=>{
+    date.setHours(12);
+    return unavDates.some(e =>{ 
+        const date1WithoutTime = new Date(date.getTime());
+        const date2WithoutTime = new Date(e.getTime());
+        date1WithoutTime.setUTCHours(0, 0, 0, 0);
+        date2WithoutTime.setUTCHours(0, 0, 0, 0);
+
+        const date1 = new Date(date.getTime());
+        const date2 = new Date(e.getTime());
+        date1.setUTCHours(9,0,0,0);
+        return date1WithoutTime.getTime() === date2WithoutTime.getTime() && date1 > date2;
+    })
+};
+
+  const findNextAvailableDate=(unavDates)=>{
+    var nextAvailableDate = new Date();
+    var foundRange = false;
+    console.log(unavDates);
+    if(unavDates.length > 0)
+        while(!foundRange){
+            if(isDateTimeUnavailable(nextAvailableDate, unavDates)){
+                nextAvailableDate = new Date(nextAvailableDate.getTime()+oneDay);
+            }
+            else
+              foundRange = true;
+        }
+    let frd = fastResData;
+    frd.startDate = nextAvailableDate;
+    setFastResData(frd);
+}
+
+  const datePicker = <><TextField style={{margin:'10px 10px' }} onClick={()=>setOpenDate(!openDate)} label='Date picker' placeholder={`${format(fastResData.startDate, "dd.MM.yyyy.")}`} 
+  value={`${format(fastResData.startDate, "dd.MM.yyyy.")}`}
+  InputProps={{
+      startAdornment: (
+      <InputAdornment position="start">
+          <DateRangeOutlined />
+      </InputAdornment>
+      )
+  }}
+      />
+      {openDate && <div style={{
+              position:"absolute",
+              zIndex:99999,
+              backgroundColor:"white",
+              border:"1px solid rgb(5, 30, 52)"
+          }}
+          >
+          <Calendar
+          date={fastResData.startDate}
+          onChange={(date)=>{
+            let fastres= fastResData;
+            fastres.startDate = date;
+            setFastResData(fastResData);
+             setOpenDate(false);}}
+          minDate={new Date()}
+          disabledDates={unavailableDates}
+          editableDateInputs={true}
+          />
+      </div>
+      }
+  </>
   
 
   if (isLoading || isLoadingPricelist) { return <div className="App"><CircularProgress /></div> }
@@ -305,17 +401,7 @@ export default function AddFastReservation(props) {
             <table>
               <tr>
                 <td>
-                  <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <DatePicker
-                      label="Date Picker"
-                      value={value}
-                      onChange={(newValue) => {
-                        setValue(newValue);
-                      }}
-                      minDate={Date.now()}
-                      renderInput={(params) => <TextField {...params} />}
-                    />
-                  </LocalizationProvider>
+                  {datePicker}
                 </td>
               </tr>
               <tr>
@@ -343,9 +429,9 @@ export default function AddFastReservation(props) {
                 </FormControl>
                 </td>
               </tr>
-              <tr>
+              {entityBasicData.entityType != "ADVENTURE" && <><tr>
               <FormControl sx={{ m: 1 }}>
-                  <InputLabel htmlFor="outlined-adornment-amount">Total Num Of Nights</InputLabel>
+                  <InputLabel htmlFor="outlined-adornment-amount" >Total Num Of Nights</InputLabel>
                     <OutlinedInput
                       id="outlined-adornment-amount"
                       size="small"
@@ -368,7 +454,8 @@ export default function AddFastReservation(props) {
                   </FormControl>
               </tr>
               <tr>{errors.numNights && <p style={{ color: '#ED6663', fontSize:"10px" }}>Please check num of days between 1-100.</p>}</tr>
-               
+              </>
+              }
               <tr>
                 <FormControl sx={{ m: 1 }}>
                   <InputLabel htmlFor="outlined-adornment-amount">Max Num Of People</InputLabel>
@@ -377,23 +464,30 @@ export default function AddFastReservation(props) {
                       size="small"
                       name="maxNumPeople"
                       type="number"
+                      InputProps={{ inputProps: { min: 1, max: entityBasicData.entityType != "COTTAGE"?entityBasicData.maxNumOfPersons:50 } }}
                       onChange={e => {
                         let data = fastResData;
                         let people = parseInt(e.target.value);
+                        if(entityBasicData.entityType != "COTTAGE" && entityBasicData.maxNumOfPersons<people)
+                          e.target.value = entityBasicData.maxNumOfPersons;
+                        if(people<0)
+                          e.target.value = 0;
                         if (people === NaN) alert("Greska");
                         else {
                           data.numOfPeople = people;
                         }
+                        
+
                         setFastResData(data);
                       }}
                       placeholder="Max Num Of People"
                       label="Max Num Of People"
                       startAdornment={<InputAdornment position="start"></InputAdornment>}
-                      {...register("maxNumPeople", { required: true, min: 1, max: 30 })}
+                      {...register("maxNumPeople", { required: true, min: 1, max: entityBasicData.entityType != "COTTAGE"?entityBasicData.maxNumOfPersons:50 })}
                     />
                   </FormControl>
               </tr>
-              <tr>{errors.maxNumPeople && <p style={{ color: '#ED6663', fontSize:"10px" }}>Please check num of people between 1-30.</p>}</tr>
+              <tr>{errors.maxNumPeople && <p style={{ color: '#ED6663', fontSize:"10px" }}>Please check num of people between 1-{entityBasicData.entityType != "COTTAGE"?entityBasicData.maxNumOfPersons:50}.</p>}</tr>
                
               <tr>
                 <td>
